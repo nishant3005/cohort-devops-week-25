@@ -3,7 +3,7 @@ import {client} from "@repo/db/client"
 
 
 const server = new WebSocketServer({
-    port: 3001
+    port: 8001
 });
 
 server.on("connection", async (socket) => {
