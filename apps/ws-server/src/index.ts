@@ -13,7 +13,6 @@ server.on("connection", async (socket) => {
             password: Math.random().toString()
         }
     })
-    console.log("find user", client.user)
     socket.send("Hi you are connected to the server")
 })
 
