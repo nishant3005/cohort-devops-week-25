@@ -24,6 +24,6 @@ app.post("/signup", async (req, res) => {
     });
 })
 
-app.listen(8002, () => {
+app.listen(3002, () => {
     console.log("aa gya server")
 })
