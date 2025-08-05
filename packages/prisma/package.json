@@ -6,6 +6,9 @@
   "exports": {
     "./client": "./src/index.ts"
   },
+  "scripts": {
+    "build": "tsc -b"
+  },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*"
   },
