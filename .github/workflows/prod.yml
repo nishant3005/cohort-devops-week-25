@@ -35,8 +35,8 @@ jobs:
             cd apps/ws-server && pnpm build && cd ../..
 
             echo "🔁 Restarting apps using PM2..."
-            pm2 restart staging-http-server
-            pm2 restart staging-ws-server
-            pm2 restart staging-next-server
+            pm2 restart http-server
+            pm2 restart ws-server
+            pm2 restart next-server
 
             echo "✅ Deployment complete!"
