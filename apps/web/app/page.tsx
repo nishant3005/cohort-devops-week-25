@@ -7,7 +7,7 @@ export default async function Home() {
 
   return (
     <div>
-      This is prod server
+      This is production server
       {user?.username}
       {user?.password}
     </div>
