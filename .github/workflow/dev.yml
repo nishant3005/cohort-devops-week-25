@@ -1,0 +1,77 @@
+name: Auto Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up latest Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 'latest'
+        cache: 'pnpm'
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: latest
+
+    - name: Install dependencies
+      run: pnpm install
+
+    - name: Build all apps with Turborepo
+      run: pnpm turbo run build --filter=...
+
+    # --- Deploy http-server ---
+    - name: Deploy http-server
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        port: 22
+        source: "apps/http-server/dist/*"
+        target: "/var/www/html/http-server"
+
+    # --- Deploy ws-server ---
+    - name: Deploy ws-server
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        port: 22
+        source: "apps/ws-server/dist/*"
+        target: "/var/www/html/ws-server"
+
+    # --- Deploy web ---
+    - name: Deploy web app
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        port: 22
+        source: "apps/web/dist/*"
+        target: "/var/www/html/web"
+
+    # --- Restart apps on server using PM2 ---
+    - name: Restart apps with PM2
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_SSH_KEY }}
+        port: 22
+        script: |
+          pm2 restart staging-http-server || echo "http-server not running"
+          pm2 restart staging-ws-server || echo "ws-server not running"
+          pm2 restart staging-next-server || echo "web not running"
