@@ -1,4 +1,49 @@
-name: Auto Deploy
+# name: Auto Deploy
+
+# on:
+#   push:
+#     branches:
+#       - main
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       # Checkout the repo
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
+
+#       # Install dependencies
+#       - name: Install dependencies
+#         run: pnpm install
+
+#       # Build fe app
+#       - name: Build 
+#         run: cd apps/web && pnpm run build && cd ../..
+#       # Build http server
+#       - name: Build 
+#         run: cd apps/http-server && pnpm run build && cd ../..
+#       # Build ws server
+#       - name: Build 
+#         run: cd apps/ws-server && pnpm run build && cd ../..
+
+#       # --- Restart apps on server using PM2 ---
+#       - name: Restart apps with PM2
+#         uses: appleboy/ssh-action@v1.0.0
+#         with:
+#           host: ${{ secrets.SERVER_HOST }}
+#           username: ${{ secrets.SERVER_USER }}
+#           key: ${{ secrets.SERVER_SSH_KEY }}
+#           port: 22
+#           script: |
+#             pm2 restart staging-http-server || echo "http-server not running"
+#             pm2 restart staging-ws-server || echo "ws-server not running"
+#             pm2 restart staging-next-server || echo "web not running"
+
+
+
+name: Deploy to Dev
 
 on:
   push:
@@ -6,83 +51,37 @@ on:
       - main
 
 jobs:
-  deploy:
+  deploy_everything:
+    name: Deploy to Dev Server
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the repo
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: 📦 Checkout Repo
+        uses: actions/checkout@v3
 
-      # Setup Node.js
-      - name: Set up latest Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'latest'
-
-      # Setup pnpm
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: latest
-
-      # Install dependencies
-      - name: Install dependencies
-        run: pnpm install
-
-      # Generate Prisma client
-      - name: Generate Prisma client
-        working-directory: packages/prisma
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: pnpm prisma generate
-
-      # Build all apps using Turborepo
-      - name: Build all apps with Turborepo
-        run: pnpm turbo run build
-
-      # --- Deploy http-server ---
-      - name: Deploy http-server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22
-          source: "apps/http-server/dist/*"
-          target: "/var/www/html/http-server"
-
-      # --- Deploy ws-server ---
-      - name: Deploy ws-server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22
-          source: "apps/ws-server/dist/*"
-          target: "/var/www/html/ws-server"
-
-      # --- Deploy web ---
-      - name: Deploy web app
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22
-          source: "apps/web/dist/*"
-          target: "/var/www/html/web"
-
-      # --- Restart apps on server using PM2 ---
-      - name: Restart apps with PM2
+      - name: 🚀 Deploy via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22
           script: |
-            pm2 restart staging-http-server || echo "http-server not running"
-            pm2 restart staging-ws-server || echo "ws-server not running"
-            pm2 restart staging-next-server || echo "web not running"
+            cd staging/cohort-devops-week-25
+            git checkout main
+            git pull origin main
+
+            echo "📦 Installing dependencies using pnpm..."
+            pnpm install
+
+            echo "⚙️ Building all apps using pnpm..."
+            cd packages/prisma && pnpm build && cd ../..
+            cd apps/web && pnpm build && cd ../..
+            cd apps/http-server && pnpm build && cd ../..
+            cd apps/ws-server && pnpm build && cd ../..
+
+            echo "🔁 Restarting apps using PM2..."
+            pm2 restart staging-http-server
+            pm2 restart staging-ws-server
+            pm2 restart staging-next-server
+
+            echo "✅ Deployment complete!"
