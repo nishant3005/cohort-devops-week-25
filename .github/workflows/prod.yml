@@ -1,0 +1,42 @@
+name: Deploy to Prod
+
+on:
+  push:
+    branches:
+      - production
+
+jobs:
+  deploy_everything:
+    name: Deploy to Prod Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📦 Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: 🚀 Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd production/cohort-devops-week-25
+            git checkout production
+            git pull origin production
+
+            echo "📦 Installing dependencies using pnpm..."
+            pnpm install
+
+            echo "⚙️ Building all apps using pnpm..."
+            cd packages/prisma && pnpm build && cd ../..
+            cd apps/web && pnpm build && cd ../..
+            cd apps/http-server && pnpm build && cd ../..
+            cd apps/ws-server && pnpm build && cd ../..
+
+            echo "🔁 Restarting apps using PM2..."
+            pm2 restart staging-http-server
+            pm2 restart staging-ws-server
+            pm2 restart staging-next-server
+
+            echo "✅ Deployment complete!"
