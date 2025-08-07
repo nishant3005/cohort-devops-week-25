@@ -1,3 +1,48 @@
+# name: Auto Deploy
+
+# on:
+#   push:
+#     branches:
+#       - main
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       # Checkout the repo
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
+
+#       # Install dependencies
+#       - name: Install dependencies
+#         run: pnpm install
+
+#       # Build fe app
+#       - name: Build 
+#         run: cd apps/web && pnpm run build && cd ../..
+#       # Build http server
+#       - name: Build 
+#         run: cd apps/http-server && pnpm run build && cd ../..
+#       # Build ws server
+#       - name: Build 
+#         run: cd apps/ws-server && pnpm run build && cd ../..
+
+#       # --- Restart apps on server using PM2 ---
+#       - name: Restart apps with PM2
+#         uses: appleboy/ssh-action@v1.0.0
+#         with:
+#           host: ${{ secrets.SERVER_HOST }}
+#           username: ${{ secrets.SERVER_USER }}
+#           key: ${{ secrets.SERVER_SSH_KEY }}
+#           port: 22
+#           script: |
+#             pm2 restart staging-http-server || echo "http-server not running"
+#             pm2 restart staging-ws-server || echo "ws-server not running"
+#             pm2 restart staging-next-server || echo "web not running"
+
+
+
 name: Deploy to Dev
 
 on:
@@ -6,7 +51,7 @@ on:
       - main
 
 jobs:
-  deploy:
+  deploy_everything:
     name: Deploy to Dev Server
     runs-on: ubuntu-latest
 
@@ -14,22 +59,13 @@ jobs:
       - name: 📦 Checkout Repo
         uses: actions/checkout@v3
 
-      - name: ⬇️ Setup SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          
-          # Start ssh-agent and add key with passphrase from secret
-          eval "$(ssh-agent -s)"
-          echo "${{ secrets.SSH_KEY_PASSPHRASE }}" | ssh-add ~/.ssh/id_rsa
-
-          # Add host to known_hosts to avoid prompt
-          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
-
-      - name: 🚀 Deploy to Server
-        run: |
-          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+      - name: 🚀 Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
             cd staging/cohort-devops-week-25
             git checkout main
             git pull origin main
@@ -49,4 +85,3 @@ jobs:
             pm2 restart staging-next-server
 
             echo "✅ Deployment complete!"
-          EOF
