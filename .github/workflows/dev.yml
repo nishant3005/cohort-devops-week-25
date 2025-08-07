@@ -27,7 +27,7 @@ jobs:
       run: pnpm install
 
     - name: Build all apps with Turborepo
-      run: pnpm turbo run build --filter=...
+      run: pnpm turbo run build
 
     # --- Deploy http-server ---
     - name: Deploy http-server
